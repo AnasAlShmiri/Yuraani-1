@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <ItemGroup>
+    <ProjectReference Include="..\Yuraani.Application\Yuraani.Application.csproj" />
+    <ProjectReference Include="..\Yuraani.Infrastructure\Yuraani.Infrastructure.csproj" />
+  </ItemGroup>
+</Project>
