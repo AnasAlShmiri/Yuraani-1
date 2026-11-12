@@ -29,10 +29,11 @@ public sealed class VerificationChallenge : Entity<Guid>
             ExpiresAt = now.AddMinutes(10)
         };
 
+    // تنتهي صلاحية الرمز بعد عشر دقائق أو خمس محاولات فاشلة، أيهما أسبق.
     public bool IsUsable(DateTimeOffset now) =>
         ConsumedAt is null && RevokedAt is null && AttemptCount < MaximumAttempts && ExpiresAt > now;
 
-    // مقارنة ثابتة الزمن لتقليل احتمالات استنتاج الهاش عبر توقيت الاستجابة.
+    // مقارنة ثابتة الزمن لتقليل تسريب معلومات الهاش عبر توقيت الاستجابة.
     public bool Matches(string hash)
     {
         try
