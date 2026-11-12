@@ -4,7 +4,6 @@ using System.Security.Claims;
 using System.Text;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
-using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -47,26 +46,25 @@ public sealed class ProfessionalApprovalAuthorizationTests : IClassFixture<Yuraa
 public sealed class YuraaniApiFactory : WebApplicationFactory<Program>
 {
     private const string Secret = "integration-test-secret-key-with-at-least-32-bytes";
-    private readonly SqliteConnection _connection = new("Data Source=:memory:");
+    private readonly string _connectionString =
+        Environment.GetEnvironmentVariable("YURAANI_TEST_SQLSERVER_CONNECTION")
+        ?? throw new InvalidOperationException(
+            "Set YURAANI_TEST_SQLSERVER_CONNECTION to a dedicated SQL Server test database connection string.");
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
-        _connection.Open();
-
-        // Use host settings so the minimal-hosting Program receives test configuration
-        // before its startup-time JWT validation executes.
+        // Supply host settings before Program's startup-time JWT validation.
         builder.UseSetting("Jwt:Secret", Secret);
         builder.UseSetting("Jwt:Issuer", "Yuraani.IntegrationTests");
         builder.UseSetting("Jwt:Audience", "Yuraani.IntegrationTests");
-        builder.UseSetting("ConnectionStrings:Yuraani", "Data Source=:memory:");
+        builder.UseSetting("ConnectionStrings:Yuraani", _connectionString);
 
         builder.ConfigureServices(services =>
         {
             services.RemoveAll<YuraaniDbContext>();
             services.RemoveAll<DbContextOptions<YuraaniDbContext>>();
-            services.AddSingleton(_connection);
-            services.AddDbContext<YuraaniDbContext>((provider, options) =>
-                options.UseSqlite(provider.GetRequiredService<SqliteConnection>()));
+            services.AddDbContext<YuraaniDbContext>(options =>
+                options.UseSqlServer(_connectionString));
         });
     }
 
@@ -92,11 +90,5 @@ public sealed class YuraaniApiFactory : WebApplicationFactory<Program>
             now.AddMinutes(-1), now.AddMinutes(5),
             new SigningCredentials(key, SecurityAlgorithms.HmacSha256));
         return new JwtSecurityTokenHandler().WriteToken(token);
-    }
-
-    protected override void Dispose(bool disposing)
-    {
-        base.Dispose(disposing);
-        if (disposing) _connection.Dispose();
     }
 }
