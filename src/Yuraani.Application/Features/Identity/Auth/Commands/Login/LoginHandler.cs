@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+using System.Text;
 using MediatR;
 using Yuraani.Application.Features.Identity.Auth.Abstractions;
 using Yuraani.Application.Features.Identity.Auth.DTOs;
@@ -39,10 +41,16 @@ public sealed class LoginHandler(IAuthRepository repo, ISecurePasswordService pa
         }
         account.RecordSuccessfulLogin(now);
         await Log(account.Id, request.Identifier, true, null, now, ct);
+        var rawRefresh = CreateRefreshToken();
+        var session = RefreshSession.Create(account.Id, Hash(rawRefresh), now, context.IpAddress, context.UserAgent);
+        await repo.AddSessionAsync(session, ct);
         await repo.SaveChangesAsync(ct);
-        var token = await tokens.CreateAccessTokenAsync(account, ct);
-        return new AuthResponse(token.Token, token.ExpiresAt, account.Id, account.FullName, account.PhoneNumber, account.Email);
+        var access = await tokens.CreateAccessTokenAsync(account, ct);
+        return new AuthResponse(access.Token, access.ExpiresAt, account.Id, account.FullName,
+            account.PhoneNumber, account.Email, rawRefresh, session.ExpiresAt);
     }
     private Task Log(Guid? id, string identifier, bool success, string? reason, DateTimeOffset now, CancellationToken ct) =>
         repo.AddLoginHistoryAsync(LoginHistory.Record(id, identifier, success, reason, context.IpAddress, context.UserAgent, now), ct);
+    private static string CreateRefreshToken() => Convert.ToBase64String(RandomNumberGenerator.GetBytes(64)).TrimEnd('=').Replace('+', '-').Replace('/', '_');
+    private static string Hash(string value) => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(value)));
 }

@@ -7,6 +7,7 @@ public sealed class YuraaniDbContext(DbContextOptions<YuraaniDbContext> options)
     public DbSet<UserAccount> UserAccounts => Set<UserAccount>();
     public DbSet<VerificationChallenge> VerificationChallenges => Set<VerificationChallenge>();
     public DbSet<LoginHistory> LoginHistory => Set<LoginHistory>();
+    public DbSet<RefreshSession> RefreshSessions => Set<RefreshSession>();
     public DbSet<Role> Roles => Set<Role>();
     public DbSet<Permission> Permissions => Set<Permission>();
     public DbSet<UserRole> UserRoles => Set<UserRole>();
