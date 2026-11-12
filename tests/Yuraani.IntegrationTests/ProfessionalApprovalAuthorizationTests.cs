@@ -1,0 +1,70 @@
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Extensions.Configuration;
+using Microsoft.IdentityModel.Tokens;
+using Xunit;
+
+namespace Yuraani.IntegrationTests;
+
+public sealed class ProfessionalApprovalAuthorizationTests : IClassFixture<YuraaniApiFactory>
+{
+    private readonly HttpClient _client;
+    private readonly YuraaniApiFactory _factory;
+
+    public ProfessionalApprovalAuthorizationTests(YuraaniApiFactory factory)
+    {
+        _factory = factory;
+        _client = factory.CreateClient();
+    }
+
+    [Fact]
+    public async Task Approval_submission_requires_authentication()
+    {
+        using var response = await _client.PostAsJsonAsync("/api/professional-approvals",
+            new { professionalType = 1 });
+        Assert.Equal(System.Net.HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Pending_approvals_requires_administrator_role()
+    {
+        _client.DefaultRequestHeaders.Authorization =
+            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _factory.CreateToken(Guid.NewGuid(), "Patient"));
+        using var response = await _client.GetAsync("/api/professional-approvals/pending");
+        Assert.Equal(System.Net.HttpStatusCode.Forbidden, response.StatusCode);
+    }
+}
+
+public sealed class YuraaniApiFactory : WebApplicationFactory<Program>
+{
+    private const string Secret = "integration-test-secret-key-with-at-least-32-bytes";
+    protected override void ConfigureWebHost(IWebHostBuilder builder)
+    {
+        builder.ConfigureAppConfiguration((_, config) => config.AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["Jwt:Secret"] = Secret,
+            ["Jwt:Issuer"] = "Yuraani.IntegrationTests",
+            ["Jwt:Audience"] = "Yuraani.IntegrationTests",
+            ["ConnectionStrings:Yuraani"] = "Server=(localdb)\\MSSQLLocalDB;Database=YuraaniIntegration;Trusted_Connection=True;TrustServerCertificate=True"
+        }));
+    }
+
+    public string CreateToken(Guid userId, string role)
+    {
+        var now = DateTime.UtcNow;
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(Secret));
+        var claims = new[]
+        {
+            new Claim(JwtRegisteredClaimNames.Sub, userId.ToString()),
+            new Claim(ClaimTypes.NameIdentifier, userId.ToString()),
+            new Claim(ClaimTypes.Role, role)
+        };
+        var token = new JwtSecurityToken("Yuraani.IntegrationTests", "Yuraani.IntegrationTests", claims,
+            now.AddMinutes(-1), now.AddMinutes(5),
+            new SigningCredentials(key, SecurityAlgorithms.HmacSha256));
+        return new JwtSecurityTokenHandler().WriteToken(token);
+    }
+}
