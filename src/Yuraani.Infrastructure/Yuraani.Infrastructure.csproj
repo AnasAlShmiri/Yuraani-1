@@ -2,6 +2,7 @@
   <ItemGroup>
     <ProjectReference Include="../Yuraani.Application/Yuraani.Application.csproj" />
     <ProjectReference Include="../Yuraani.Domain/Yuraani.Domain.csproj" />
+    <!-- يوفر واجهات ASP.NET Core المستخدمة في بيئة التشغيل وسياق HTTP. -->
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
   <ItemGroup>
