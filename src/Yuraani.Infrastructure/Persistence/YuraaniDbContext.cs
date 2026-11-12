@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Yuraani.Domain.Identity;
 using Yuraani.Domain.ProfessionalApproval;
+using ApprovalEntity = Yuraani.Domain.ProfessionalApproval.ProfessionalApproval;
 namespace Yuraani.Infrastructure.Persistence;
 public sealed class YuraaniDbContext(DbContextOptions<YuraaniDbContext> options) : DbContext(options)
 {
@@ -15,7 +16,7 @@ public sealed class YuraaniDbContext(DbContextOptions<YuraaniDbContext> options)
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
     public DbSet<CareProvider> CareProviders => Set<CareProvider>();
     public DbSet<Administrator> Administrators => Set<Administrator>();
-    public DbSet<ProfessionalApproval> ProfessionalApprovals => Set<ProfessionalApproval>();
+    public DbSet<ApprovalEntity> ProfessionalApprovals => Set<ApprovalEntity>();
     public DbSet<ProfessionalApprovalReview> ProfessionalApprovalReviews => Set<ProfessionalApprovalReview>();
     public DbSet<ProfessionalLicense> ProfessionalLicenses => Set<ProfessionalLicense>();
     protected override void OnModelCreating(ModelBuilder modelBuilder)

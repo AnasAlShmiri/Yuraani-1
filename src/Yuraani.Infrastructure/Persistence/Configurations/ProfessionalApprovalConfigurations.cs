@@ -1,41 +1,34 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Yuraani.Domain.ProfessionalApproval;
-
+using ApprovalEntity = Yuraani.Domain.ProfessionalApproval.ProfessionalApproval;
 namespace Yuraani.Infrastructure.Persistence.Configurations;
-
 public sealed class CareProviderConfiguration : IEntityTypeConfiguration<CareProvider>
 {
     public void Configure(EntityTypeBuilder<CareProvider> b)
     {
-        b.ToTable("CareProviders");
-        b.HasKey(x => x.Id);
+        b.ToTable("CareProviders"); b.HasKey(x => x.Id);
         b.Property(x => x.BasePrice).HasPrecision(12, 2);
         b.Property(x => x.ServiceArea).HasColumnType("nvarchar(max)");
         b.Property(x => x.YearsExperience).HasColumnType("smallint");
         b.Property(x => x.CreatedAt).HasColumnType("datetime2");
         b.HasIndex(x => x.UserAccountId).IsUnique();
-        b.HasOne<Yuraani.Domain.Identity.UserAccount>().WithMany()
-            .HasForeignKey(x => x.UserAccountId).OnDelete(DeleteBehavior.Restrict);
+        b.HasOne<Yuraani.Domain.Identity.UserAccount>().WithMany().HasForeignKey(x => x.UserAccountId).OnDelete(DeleteBehavior.Restrict);
     }
 }
-
 public sealed class AdministratorConfiguration : IEntityTypeConfiguration<Administrator>
 {
     public void Configure(EntityTypeBuilder<Administrator> b)
     {
-        b.ToTable("Administrators");
-        b.HasKey(x => x.Id);
+        b.ToTable("Administrators"); b.HasKey(x => x.Id);
         b.Property(x => x.CreatedAt).HasColumnType("datetime2");
         b.HasIndex(x => x.UserAccountId).IsUnique();
-        b.HasOne<Yuraani.Domain.Identity.UserAccount>().WithMany()
-            .HasForeignKey(x => x.UserAccountId).OnDelete(DeleteBehavior.Restrict);
+        b.HasOne<Yuraani.Domain.Identity.UserAccount>().WithMany().HasForeignKey(x => x.UserAccountId).OnDelete(DeleteBehavior.Restrict);
     }
 }
-
-public sealed class ProfessionalApprovalConfiguration : IEntityTypeConfiguration<ProfessionalApproval>
+public sealed class ProfessionalApprovalConfiguration : IEntityTypeConfiguration<ApprovalEntity>
 {
-    public void Configure(EntityTypeBuilder<ProfessionalApproval> b)
+    public void Configure(EntityTypeBuilder<ApprovalEntity> b)
     {
         b.ToTable("ProfessionalApprovals", t =>
         {
@@ -54,22 +47,19 @@ public sealed class ProfessionalApprovalConfiguration : IEntityTypeConfiguration
         b.HasOne<Administrator>().WithMany().HasForeignKey(x => x.ReviewedByAdminId).OnDelete(DeleteBehavior.Restrict);
     }
 }
-
 public sealed class ProfessionalApprovalReviewConfiguration : IEntityTypeConfiguration<ProfessionalApprovalReview>
 {
     public void Configure(EntityTypeBuilder<ProfessionalApprovalReview> b)
     {
-        b.ToTable("ProfessionalApprovalReviews");
-        b.HasKey(x => x.Id);
+        b.ToTable("ProfessionalApprovalReviews"); b.HasKey(x => x.Id);
         b.Property(x => x.ReviewAction).HasConversion<string>().HasMaxLength(30).IsRequired();
         b.Property(x => x.Notes).HasMaxLength(1000);
         b.Property(x => x.CreatedAt).HasColumnType("datetime2");
-        b.HasOne<ProfessionalApproval>().WithMany().HasForeignKey(x => x.ApprovalId).OnDelete(DeleteBehavior.Restrict);
+        b.HasOne<ApprovalEntity>().WithMany().HasForeignKey(x => x.ApprovalId).OnDelete(DeleteBehavior.Restrict);
         b.HasOne<Administrator>().WithMany().HasForeignKey(x => x.AdminId).OnDelete(DeleteBehavior.Restrict);
         b.HasIndex(x => new { x.ApprovalId, x.CreatedAt });
     }
 }
-
 public sealed class ProfessionalLicenseConfiguration : IEntityTypeConfiguration<ProfessionalLicense>
 {
     public void Configure(EntityTypeBuilder<ProfessionalLicense> b)
