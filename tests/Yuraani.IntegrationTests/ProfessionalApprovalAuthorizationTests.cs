@@ -3,8 +3,14 @@ using System.Security.Claims;
 using System.Text;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Data.Sqlite;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Hosting;
 using Microsoft.IdentityModel.Tokens;
+using Yuraani.Infrastructure.Persistence;
 using Xunit;
 
 namespace Yuraani.IntegrationTests;
@@ -29,7 +35,7 @@ public sealed class ProfessionalApprovalAuthorizationTests : IClassFixture<Yuraa
     }
 
     [Fact]
-    public async Task Pending_approvals_requires_administrator_role()
+    public async Task Pending_approvals_requires_explicit_review_permission()
     {
         _client.DefaultRequestHeaders.Authorization =
             new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _factory.CreateToken(Guid.NewGuid(), "Patient"));
@@ -41,15 +47,34 @@ public sealed class ProfessionalApprovalAuthorizationTests : IClassFixture<Yuraa
 public sealed class YuraaniApiFactory : WebApplicationFactory<Program>
 {
     private const string Secret = "integration-test-secret-key-with-at-least-32-bytes";
+    private readonly SqliteConnection _connection = new("Data Source=:memory:");
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
+        _connection.Open();
         builder.ConfigureAppConfiguration((_, config) => config.AddInMemoryCollection(new Dictionary<string, string?>
         {
             ["Jwt:Secret"] = Secret,
             ["Jwt:Issuer"] = "Yuraani.IntegrationTests",
             ["Jwt:Audience"] = "Yuraani.IntegrationTests",
-            ["ConnectionStrings:Yuraani"] = "Server=(localdb)\\MSSQLLocalDB;Database=YuraaniIntegration;Trusted_Connection=True;TrustServerCertificate=True"
+            ["ConnectionStrings:Yuraani"] = "Data Source=:memory:"
         }));
+        builder.ConfigureServices(services =>
+        {
+            services.RemoveAll<YuraaniDbContext>();
+            services.RemoveAll<DbContextOptions<YuraaniDbContext>>();
+            services.AddSingleton(_connection);
+            services.AddDbContext<YuraaniDbContext>((provider, options) =>
+                options.UseSqlite(provider.GetRequiredService<SqliteConnection>()));
+        });
+    }
+
+    protected override IHost CreateHost(IHostBuilder builder)
+    {
+        var host = base.CreateHost(builder);
+        using var scope = host.Services.CreateScope();
+        scope.ServiceProvider.GetRequiredService<YuraaniDbContext>().Database.EnsureCreated();
+        return host;
     }
 
     public string CreateToken(Guid userId, string role)
@@ -66,5 +91,11 @@ public sealed class YuraaniApiFactory : WebApplicationFactory<Program>
             now.AddMinutes(-1), now.AddMinutes(5),
             new SigningCredentials(key, SecurityAlgorithms.HmacSha256));
         return new JwtSecurityTokenHandler().WriteToken(token);
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        base.Dispose(disposing);
+        if (disposing) _connection.Dispose();
     }
 }
