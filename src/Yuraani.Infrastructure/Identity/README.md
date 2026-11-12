@@ -1,5 +1,3 @@
-# Identity & Access — Infrastructure
+# Identity Infrastructure
 
-Implement persistence and security adapters here after the Identity domain model is approved. This may include ASP.NET Core Identity integration, password hashing, token issuance, and persistence mappings.
-
-Secrets and signing keys must come from secure configuration or a secret store; never commit them to the repository.
+Implement identity/security adapters here when required by approved Application contracts. Keep password hashing, TOTP secret protection, token/session persistence, and provider-specific details out of Domain entities. Do not duplicate ASP.NET Identity without an explicit architectural decision.
