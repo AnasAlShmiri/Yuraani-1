@@ -1,10 +1,18 @@
 # Identity / Auth
 
-Implemented CQRS use cases:
-- RegisterAccount: creates a PendingVerification account and independent phone/email verification challenges.
-- VerifyContact: consumes one valid challenge for one contact. The account becomes Active only after both phone and email are verified.
-- Login: accepts normalized phone or email, verifies the password, enforces the five-failure/15-minute lockout, records LoginHistory, and issues a short-lived JWT.
+تنفذ هذه الميزة حالات المصادقة باستخدام CQRS:
 
-Registration does not create a Patient, CareProvider, Doctor, Nurse, or Administrator profile. Profile onboarding is a separate feature and an account may later own multiple profiles.
+- `RegisterAccount`: ينشئ الحساب بحالة انتظار التحقق، ويصدر رمزاً مستقلاً للهاتف وآخر للبريد.
+- `VerifyContact`: يستهلك رمزاً صالحاً لوسيلة اتصال واحدة؛ ولا يصبح الحساب نشطاً إلا بعد توثيق الهاتف والبريد معاً.
+- `ResendVerification`: يعيد إصدار الرمز مع مهلة 60 ثانية وحد أقصى ثلاثة رموز لكل وسيلة اتصال خلال الساعة.
+- `Login`: يقبل الهاتف أو البريد، ويتحقق من كلمة المرور، ويطبق قفل الحساب بعد خمس محاولات فاشلة لمدة 15 دقيقة، ويسجل LoginHistory ثم يصدر JWT قصير الصلاحية.
 
-The verification sender is development-only; configure production SMS and email delivery before deployment. Configure JWT signing settings using secrets/environment variables.
+لا ينشئ التسجيل ملف Patient أو CareProvider أو Doctor أو Nurse أو Administrator؛ استكمال الملف الوظيفي خطوة مستقلة، ويمكن للحساب امتلاك أكثر من ملف.
+
+## إعدادات التشغيل
+
+- اضبط `Verification:HashKey` بمفتاح سري ثابت لا يقل عن 32 بايت عبر User Secrets أو متغير البيئة `Verification__HashKey`.
+- اضبط `Jwt:Secret` و`Jwt:Issuer` و`Jwt:Audience` عبر مخزن أسرار قبل اختبار تسجيل الدخول.
+- مرسل رموز التحقق الحالي Development-only؛ لا تنشر التطبيق قبل ربط مزودي SMS والبريد الفعليين.
+
+تطبق API حالياً حداً عاماً لطلبات المصادقة حسب عنوان IP؛ يلزم إضافة حد مستقل حسب معرف الحساب قبل اعتبار الحماية من التخمين مكتملة.
