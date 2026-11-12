@@ -6,7 +6,6 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
@@ -53,13 +52,14 @@ public sealed class YuraaniApiFactory : WebApplicationFactory<Program>
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         _connection.Open();
-        builder.ConfigureAppConfiguration((_, config) => config.AddInMemoryCollection(new Dictionary<string, string?>
-        {
-            ["Jwt:Secret"] = Secret,
-            ["Jwt:Issuer"] = "Yuraani.IntegrationTests",
-            ["Jwt:Audience"] = "Yuraani.IntegrationTests",
-            ["ConnectionStrings:Yuraani"] = "Data Source=:memory:"
-        }));
+
+        // Use host settings so the minimal-hosting Program receives test configuration
+        // before its startup-time JWT validation executes.
+        builder.UseSetting("Jwt:Secret", Secret);
+        builder.UseSetting("Jwt:Issuer", "Yuraani.IntegrationTests");
+        builder.UseSetting("Jwt:Audience", "Yuraani.IntegrationTests");
+        builder.UseSetting("ConnectionStrings:Yuraani", "Data Source=:memory:");
+
         builder.ConfigureServices(services =>
         {
             services.RemoveAll<YuraaniDbContext>();
