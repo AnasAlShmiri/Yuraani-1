@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Yuraani.Application.Features.Identity.Auth.Commands.Login;
 using Yuraani.Application.Features.Identity.Auth.Commands.RegisterAccount;
+using Yuraani.Application.Features.Identity.Auth.Commands.ResendVerification;
 using Yuraani.Application.Features.Identity.Auth.Commands.VerifyContact;
 
 namespace Yuraani.API.Controllers;
@@ -29,6 +30,13 @@ public sealed class AuthController(ISender sender) : ControllerBase
     {
         await sender.Send(command, ct);
         return NoContent();
+    }
+
+    [HttpPost("resend-verification")]
+    public async Task<IActionResult> ResendVerification(ResendVerificationCommand command, CancellationToken ct)
+    {
+        await sender.Send(command, ct);
+        return Accepted();
     }
 
     [HttpPost("login")]
