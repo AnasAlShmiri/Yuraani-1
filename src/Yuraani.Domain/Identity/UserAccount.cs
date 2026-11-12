@@ -44,6 +44,7 @@ public sealed class UserAccount : Entity<Guid>
         };
     }
 
+    // لا يُفعّل الحساب إلا بعد توثيق الهاتف والبريد الإلكتروني معاً.
     public void MarkVerified(VerificationChannel channel, DateTimeOffset now)
     {
         if (channel == VerificationChannel.Phone) IsPhoneVerified = true;
@@ -58,6 +59,7 @@ public sealed class UserAccount : Entity<Guid>
 
     public bool IsLockedOut(DateTimeOffset now) => LockoutEnd.HasValue && LockoutEnd.Value > now;
 
+    // يقفل الحساب 15 دقيقة بعد خمس محاولات دخول فاشلة متتالية.
     public void RecordFailedLogin(DateTimeOffset now)
     {
         ConsecutiveFailedLoginAttempts++;
@@ -76,7 +78,7 @@ public sealed class UserAccount : Entity<Guid>
         UpdatedAt = now;
     }
 
-    // يوحّد الرقم الدولي مع الحفاظ على علامة + المطلوبة لصيغة E.164.
+    // يوحّد الرقم الدولي إلى صيغة E.164 مع الحفاظ على علامة +.
     public static string NormalizePhone(string value)
     {
         var trimmed = value.Trim();
