@@ -78,6 +78,7 @@ public sealed class ProfessionalLicenseConfiguration : IEntityTypeConfiguration<
         {
             t.HasCheckConstraint("CK_ProfessionalLicenses_ProfessionalType", "[ProfessionalType] IN ('Doctor', 'Nurse')");
             t.HasCheckConstraint("CK_ProfessionalLicenses_ExpiryAfterIssue", "[IssuedAt] IS NULL OR [ExpiresAt] > [IssuedAt]");
+            t.HasCheckConstraint("CK_ProfessionalLicenses_ReviewStatus", "[ReviewStatus] IN ('Pending', 'Approved', 'Rejected', 'Revoked', 'Expired')");
         });
         b.HasKey(x => x.Id);
         b.Property(x => x.ProfessionalType).HasConversion<string>().HasMaxLength(20).IsRequired();
@@ -88,7 +89,6 @@ public sealed class ProfessionalLicenseConfiguration : IEntityTypeConfiguration<
         b.Property(x => x.ReviewStatus).HasConversion<string>().HasMaxLength(25).IsRequired();
         b.Property(x => x.ReviewedAt).HasColumnType("datetime2");
         b.HasOne<CareProvider>().WithMany().HasForeignKey(x => x.ProviderId).OnDelete(DeleteBehavior.Restrict);
-        b.HasIndex(x => new { x.ProviderId, x.ProfessionalType, x.LicenseNumber }).IsUnique();
         b.HasIndex(x => new { x.ProviderId, x.ProfessionalType }).IsUnique().HasFilter("[IsCurrent] = 1");
     }
 }

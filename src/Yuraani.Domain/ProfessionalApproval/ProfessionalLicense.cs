@@ -36,7 +36,12 @@ public sealed class ProfessionalLicense : Entity<Guid>
 
     public void Review(bool approved, DateTimeOffset now)
     {
-        if (ReviewStatus != LicenseReviewStatus.Pending) throw new InvalidOperationException("Only pending licenses can be reviewed.");
+        if (ReviewStatus != LicenseReviewStatus.Pending)
+            throw new InvalidOperationException("Only pending licenses can be reviewed.");
+
+        if (approved && ExpiresAt < DateOnly.FromDateTime(now.UtcDateTime))
+            throw new InvalidOperationException("An expired license cannot be approved.");
+
         ReviewStatus = approved ? LicenseReviewStatus.Approved : LicenseReviewStatus.Rejected;
         IsCurrent = approved;
         ReviewedAt = now;
