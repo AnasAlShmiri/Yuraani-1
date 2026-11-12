@@ -4,7 +4,10 @@ using MediatR;
 using Yuraani.Application.Features.Identity.Auth.Abstractions;
 using Yuraani.Application.Features.Identity.Auth.DTOs;
 using Yuraani.Domain.Identity;
+using RefreshSessionEntity = Yuraani.Domain.Identity.RefreshSession;
+
 namespace Yuraani.Application.Features.Identity.Auth.Commands.Login;
+
 public sealed class LoginHandler(IAuthRepository repo, ISecurePasswordService passwords, IAuthTokenService tokens,
     ILoginContext context, TimeProvider clock) : IRequestHandler<LoginCommand, AuthResponse>
 {
@@ -42,7 +45,7 @@ public sealed class LoginHandler(IAuthRepository repo, ISecurePasswordService pa
         account.RecordSuccessfulLogin(now);
         await Log(account.Id, request.Identifier, true, null, now, ct);
         var rawRefresh = CreateRefreshToken();
-        var session = Yuraani.Domain.Identity.RefreshSession.Create(account.Id, Hash(rawRefresh), now, context.IpAddress, context.UserAgent);
+        var session = RefreshSessionEntity.Create(account.Id, Hash(rawRefresh), now, context.IpAddress, context.UserAgent);
         await repo.AddSessionAsync(session, ct);
         await repo.SaveChangesAsync(ct);
         var access = await tokens.CreateAccessTokenAsync(account, ct);
