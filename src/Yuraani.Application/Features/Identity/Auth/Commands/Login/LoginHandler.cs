@@ -42,7 +42,7 @@ public sealed class LoginHandler(IAuthRepository repo, ISecurePasswordService pa
         account.RecordSuccessfulLogin(now);
         await Log(account.Id, request.Identifier, true, null, now, ct);
         var rawRefresh = CreateRefreshToken();
-        var session = RefreshSession.Create(account.Id, Hash(rawRefresh), now, context.IpAddress, context.UserAgent);
+        var session = Yuraani.Domain.Identity.RefreshSession.Create(account.Id, Hash(rawRefresh), now, context.IpAddress, context.UserAgent);
         await repo.AddSessionAsync(session, ct);
         await repo.SaveChangesAsync(ct);
         var access = await tokens.CreateAccessTokenAsync(account, ct);

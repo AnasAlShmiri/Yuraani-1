@@ -19,7 +19,7 @@ public sealed class RefreshSessionHandler(IAuthRepository repository, IAuthToken
         if (account is null || account.AccountStatus != AccountStatus.Active)
             throw new UnauthorizedAccessException("Account is not active.");
         var raw = CreateToken();
-        var next = RefreshSession.Create(account.Id, Hash(raw), now, context.IpAddress, context.UserAgent);
+        var next = Yuraani.Domain.Identity.RefreshSession.Create(account.Id, Hash(raw), now, context.IpAddress, context.UserAgent);
         oldSession.Revoke(now, next.Id);
         await repository.AddSessionAsync(next, ct);
         var access = await tokens.CreateAccessTokenAsync(account, ct);
