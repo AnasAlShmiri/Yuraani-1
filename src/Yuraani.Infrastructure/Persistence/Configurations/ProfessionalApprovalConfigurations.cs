@@ -12,8 +12,11 @@ public sealed class CareProviderConfiguration : IEntityTypeConfiguration<CarePro
         b.HasKey(x => x.Id);
         b.Property(x => x.BasePrice).HasPrecision(12, 2);
         b.Property(x => x.ServiceArea).HasColumnType("nvarchar(max)");
+        b.Property(x => x.YearsExperience).HasColumnType("smallint");
+        b.Property(x => x.CreatedAt).HasColumnType("datetime2");
         b.HasIndex(x => x.UserAccountId).IsUnique();
-        b.HasOne<Yuraani.Domain.Identity.UserAccount>().WithMany().HasForeignKey(x => x.UserAccountId).OnDelete(DeleteBehavior.Restrict);
+        b.HasOne<Yuraani.Domain.Identity.UserAccount>().WithMany()
+            .HasForeignKey(x => x.UserAccountId).OnDelete(DeleteBehavior.Restrict);
     }
 }
 
@@ -23,8 +26,10 @@ public sealed class AdministratorConfiguration : IEntityTypeConfiguration<Admini
     {
         b.ToTable("Administrators");
         b.HasKey(x => x.Id);
+        b.Property(x => x.CreatedAt).HasColumnType("datetime2");
         b.HasIndex(x => x.UserAccountId).IsUnique();
-        b.HasOne<Yuraani.Domain.Identity.UserAccount>().WithMany().HasForeignKey(x => x.UserAccountId).OnDelete(DeleteBehavior.Restrict);
+        b.HasOne<Yuraani.Domain.Identity.UserAccount>().WithMany()
+            .HasForeignKey(x => x.UserAccountId).OnDelete(DeleteBehavior.Restrict);
     }
 }
 
@@ -33,10 +38,16 @@ public sealed class ProfessionalApprovalConfiguration : IEntityTypeConfiguration
     public void Configure(EntityTypeBuilder<ProfessionalApproval> b)
     {
         b.ToTable("ProfessionalApprovals", t =>
-            t.HasCheckConstraint("CK_ProfessionalApprovals_AttemptNumber", "[AttemptNumber] BETWEEN 1 AND 3"));
+        {
+            t.HasCheckConstraint("CK_ProfessionalApprovals_AttemptNumber", "[AttemptNumber] BETWEEN 1 AND 3");
+            t.HasCheckConstraint("CK_ProfessionalApprovals_ProfessionalType", "[ProfessionalType] IN ('Doctor', 'Nurse')");
+            t.HasCheckConstraint("CK_ProfessionalApprovals_Status", "[ApprovalStatus] IN ('Pending', 'Approved', 'Rejected', 'Withdrawn')");
+        });
         b.HasKey(x => x.Id);
         b.Property(x => x.ProfessionalType).HasConversion<string>().HasMaxLength(20).IsRequired();
         b.Property(x => x.ApprovalStatus).HasConversion<string>().HasMaxLength(25).IsRequired();
+        b.Property(x => x.SubmittedAt).HasColumnType("datetime2");
+        b.Property(x => x.DecidedAt).HasColumnType("datetime2");
         b.Property(x => x.DecisionReason).HasMaxLength(1000);
         b.HasIndex(x => new { x.ProviderId, x.ProfessionalType, x.AttemptNumber }).IsUnique();
         b.HasOne<CareProvider>().WithMany().HasForeignKey(x => x.ProviderId).OnDelete(DeleteBehavior.Restrict);
@@ -52,6 +63,7 @@ public sealed class ProfessionalApprovalReviewConfiguration : IEntityTypeConfigu
         b.HasKey(x => x.Id);
         b.Property(x => x.ReviewAction).HasConversion<string>().HasMaxLength(30).IsRequired();
         b.Property(x => x.Notes).HasMaxLength(1000);
+        b.Property(x => x.CreatedAt).HasColumnType("datetime2");
         b.HasOne<ProfessionalApproval>().WithMany().HasForeignKey(x => x.ApprovalId).OnDelete(DeleteBehavior.Restrict);
         b.HasOne<Administrator>().WithMany().HasForeignKey(x => x.AdminId).OnDelete(DeleteBehavior.Restrict);
         b.HasIndex(x => new { x.ApprovalId, x.CreatedAt });
@@ -62,12 +74,19 @@ public sealed class ProfessionalLicenseConfiguration : IEntityTypeConfiguration<
 {
     public void Configure(EntityTypeBuilder<ProfessionalLicense> b)
     {
-        b.ToTable("ProfessionalLicenses");
+        b.ToTable("ProfessionalLicenses", t =>
+        {
+            t.HasCheckConstraint("CK_ProfessionalLicenses_ProfessionalType", "[ProfessionalType] IN ('Doctor', 'Nurse')");
+            t.HasCheckConstraint("CK_ProfessionalLicenses_ExpiryAfterIssue", "[IssuedAt] IS NULL OR [ExpiresAt] > [IssuedAt]");
+        });
         b.HasKey(x => x.Id);
         b.Property(x => x.ProfessionalType).HasConversion<string>().HasMaxLength(20).IsRequired();
         b.Property(x => x.LicenseNumber).HasMaxLength(80).IsRequired();
+        b.Property(x => x.IssuedAt).HasColumnType("date");
+        b.Property(x => x.ExpiresAt).HasColumnType("date");
         b.Property(x => x.DocumentPath).HasMaxLength(500).IsRequired();
         b.Property(x => x.ReviewStatus).HasConversion<string>().HasMaxLength(25).IsRequired();
+        b.Property(x => x.ReviewedAt).HasColumnType("datetime2");
         b.HasOne<CareProvider>().WithMany().HasForeignKey(x => x.ProviderId).OnDelete(DeleteBehavior.Restrict);
         b.HasIndex(x => new { x.ProviderId, x.ProfessionalType, x.LicenseNumber }).IsUnique();
         b.HasIndex(x => new { x.ProviderId, x.ProfessionalType }).IsUnique().HasFilter("[IsCurrent] = 1");
