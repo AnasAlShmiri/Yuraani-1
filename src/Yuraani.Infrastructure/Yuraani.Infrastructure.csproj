@@ -1,7 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
-    <ProjectReference Include="..\Yuraani.Application\Yuraani.Application.csproj" />
-    <ProjectReference Include="..\Yuraani.Domain\Yuraani.Domain.csproj" />
+    <ProjectReference Include="../Yuraani.Application/Yuraani.Application.csproj" />
+    <ProjectReference Include="../Yuraani.Domain/Yuraani.Domain.csproj" />
+    <!-- يوفر واجهات ASP.NET Core المستخدمة في بيئة التشغيل وسياق HTTP. -->
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.10" />
@@ -9,5 +11,8 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
+    <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.10" />
+    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.14.0" />
+    <PackageReference Include="System.Security.Cryptography.Pkcs" Version="10.0.13" />
   </ItemGroup>
 </Project>
