@@ -3,7 +3,7 @@ using Yuraani.Domain.Common;
 namespace Yuraani.Domain.ProfessionalApproval;
 
 /// <summary>ترخيص مستقل لكل تخصص؛ صلاحية الطبيب لا تؤثر في صلاحية التمريض.</summary>
-public sealed class ProfessionalLicense : Entity<Guid>
+public sealed class ProfessionalLicense : Entity
 {
     private ProfessionalLicense() { }
 
@@ -20,11 +20,11 @@ public sealed class ProfessionalLicense : Entity<Guid>
     public static ProfessionalLicense Submit(Guid providerId, ProfessionalType type, string licenseNumber,
         DateOnly? issuedAt, DateOnly expiresAt, string documentPath)
     {
-        if (providerId == Guid.Empty) throw new ArgumentException("Care provider is required.", nameof(providerId));
-        if (!Enum.IsDefined(type)) throw new ArgumentOutOfRangeException(nameof(type));
-        if (string.IsNullOrWhiteSpace(licenseNumber) || licenseNumber.Trim().Length > 80) throw new ArgumentException("License number is required and must not exceed 80 characters.", nameof(licenseNumber));
-        if (expiresAt <= (issuedAt ?? DateOnly.MinValue)) throw new ArgumentException("License expiry must be after issue date.", nameof(expiresAt));
-        if (string.IsNullOrWhiteSpace(documentPath) || documentPath.Trim().Length > 500) throw new ArgumentException("A valid license document path is required.", nameof(documentPath));
+        if (providerId == Guid.Empty) throw new DomainValidationException("Care provider is required.");
+        if (!Enum.IsDefined(type)) throw new DomainValidationException("Professional type is invalid.");
+        if (string.IsNullOrWhiteSpace(licenseNumber) || licenseNumber.Trim().Length > 80) throw new DomainValidationException("License number is required and must not exceed 80 characters.");
+        if (expiresAt <= (issuedAt ?? DateOnly.MinValue)) throw new DomainValidationException("License expiry must be after issue date.");
+        if (string.IsNullOrWhiteSpace(documentPath) || documentPath.Trim().Length > 500) throw new DomainValidationException("A valid license document path is required.");
 
         return new ProfessionalLicense
         {
@@ -37,10 +37,10 @@ public sealed class ProfessionalLicense : Entity<Guid>
     public void Review(bool approved, DateTimeOffset now)
     {
         if (ReviewStatus != LicenseReviewStatus.Pending)
-            throw new InvalidOperationException("Only pending licenses can be reviewed.");
+            throw new BusinessRuleException("Only pending licenses can be reviewed.");
 
         if (approved && ExpiresAt < DateOnly.FromDateTime(now.UtcDateTime))
-            throw new InvalidOperationException("An expired license cannot be approved.");
+            throw new BusinessRuleException("An expired license cannot be approved.");
 
         ReviewStatus = approved ? LicenseReviewStatus.Approved : LicenseReviewStatus.Rejected;
         IsCurrent = approved;
@@ -49,7 +49,7 @@ public sealed class ProfessionalLicense : Entity<Guid>
 
     public void Revoke(DateTimeOffset now)
     {
-        if (ReviewStatus != LicenseReviewStatus.Approved) throw new InvalidOperationException("Only approved licenses can be revoked.");
+        if (ReviewStatus != LicenseReviewStatus.Approved) throw new BusinessRuleException("Only approved licenses can be revoked.");
         ReviewStatus = LicenseReviewStatus.Revoked;
         IsCurrent = false;
         ReviewedAt = now;

@@ -3,7 +3,7 @@ using Yuraani.Domain.Common;
 
 namespace Yuraani.Domain.Identity;
 
-public sealed class VerificationChallenge : Entity<Guid>
+public sealed class VerificationChallenge : Entity
 {
     public const int MaximumAttempts = 5;
 
@@ -18,16 +18,25 @@ public sealed class VerificationChallenge : Entity<Guid>
     public DateTimeOffset? RevokedAt { get; private set; }
     public int AttemptCount { get; private set; }
 
-    public static VerificationChallenge Create(Guid accountId, VerificationChannel channel, string hash, DateTimeOffset now) =>
-        new()
+    public static VerificationChallenge Create(Guid accountId, VerificationChannel channel, string codeHash, DateTimeOffset now)
+    {
+        if (accountId == Guid.Empty)
+            throw new DomainValidationException("معرّف الحساب مطلوب لإنشاء رمز التحقق.");
+        if (!Enum.IsDefined(channel))
+            throw new DomainValidationException("قناة التحقق غير معروفة.");
+        if (string.IsNullOrWhiteSpace(codeHash))
+            throw new DomainValidationException("هاش رمز التحقق مطلوب.");
+
+        return new VerificationChallenge
         {
             Id = Guid.NewGuid(),
             UserAccountId = accountId,
             Channel = channel,
-            CodeHash = hash,
+            CodeHash = codeHash,
             CreatedAt = now,
             ExpiresAt = now.AddMinutes(10)
         };
+    }
 
     // تنتهي صلاحية الرمز بعد عشر دقائق أو خمس محاولات فاشلة، أيهما أسبق.
     public bool IsUsable(DateTimeOffset now) =>
@@ -50,14 +59,14 @@ public sealed class VerificationChallenge : Entity<Guid>
 
     public void RecordFailedAttempt(DateTimeOffset now)
     {
-        if (!IsUsable(now)) throw new InvalidOperationException("Challenge is no longer usable.");
+        if (!IsUsable(now)) throw new BusinessRuleException("Challenge is no longer usable.");
         AttemptCount++;
         if (AttemptCount >= MaximumAttempts) RevokedAt = now;
     }
 
     public void Consume(DateTimeOffset now)
     {
-        if (!IsUsable(now)) throw new InvalidOperationException("Challenge is no longer usable.");
+        if (!IsUsable(now)) throw new BusinessRuleException("Challenge is no longer usable.");
         ConsumedAt = now;
     }
 

@@ -1,11 +1,14 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Yuraani.Application.Common.Abstractions;
 using Yuraani.Application.Features.Identity.Auth.Abstractions;
 using Yuraani.Application.Features.ProfessionalApproval.Abstractions;
 using Yuraani.Infrastructure.Identity;
 using Yuraani.Infrastructure.ProfessionalApproval;
+
 namespace Yuraani.Infrastructure;
+
 public static class DependencyInjection
 {
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
@@ -17,6 +20,7 @@ public static class DependencyInjection
         services.AddScoped<IAuthRepository, AuthRepository>();
         services.AddScoped<ILoginContext, HttpLoginContext>();
         services.AddScoped<IProfessionalApprovalRepository, ProfessionalApprovalRepository>();
+        services.AddScoped<IPermissionChecker, PermissionChecker>();
         services.AddSingleton<ISecurePasswordService, SecurePasswordService>();
         services.AddScoped<IAuthTokenService, JwtAuthTokenService>();
         services.AddSingleton<IVerificationCodeHasher, VerificationCodeHasher>();

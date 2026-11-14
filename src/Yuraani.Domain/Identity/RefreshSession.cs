@@ -1,7 +1,10 @@
 using Yuraani.Domain.Common;
 namespace Yuraani.Domain.Identity;
-public sealed class RefreshSession : Entity<Guid>
+public sealed class RefreshSession : Entity
 {
+    public const int MaxIpAddressLength = 64;
+    public const int MaxUserAgentLength = 512;
+
     private RefreshSession() { }
     public Guid UserAccountId { get; private set; }
     public string TokenHash { get; private set; } = string.Empty;
@@ -11,18 +14,17 @@ public sealed class RefreshSession : Entity<Guid>
     public Guid? ReplacedBySessionId { get; private set; }
     public string? IpAddress { get; private set; }
     public string? UserAgent { get; private set; }
-    public byte[] RowVersion { get; private set; } = [];
     public static RefreshSession Create(Guid userId, string tokenHash, DateTimeOffset now, string? ip, string? agent)
     {
-        if (userId == Guid.Empty) throw new ArgumentException("User account is required.", nameof(userId));
-        if (string.IsNullOrWhiteSpace(tokenHash) || tokenHash.Length != 64) throw new ArgumentException("A SHA-256 token hash is required.", nameof(tokenHash));
+        if (userId == Guid.Empty) throw new DomainValidationException("User account is required.");
+        if (string.IsNullOrWhiteSpace(tokenHash) || tokenHash.Length != 64) throw new DomainValidationException("A SHA-256 token hash is required.");
         return new RefreshSession { Id = Guid.NewGuid(), UserAccountId = userId, TokenHash = tokenHash, CreatedAt = now,
-            ExpiresAt = now.AddDays(30), IpAddress = ip, UserAgent = agent };
+            ExpiresAt = now.AddDays(30), IpAddress = ip.TruncateTo(MaxIpAddressLength), UserAgent = agent.TruncateTo(MaxUserAgentLength) };
     }
     public bool IsActive(DateTimeOffset now) => RevokedAt is null && ExpiresAt > now;
     public void Revoke(DateTimeOffset now, Guid? replacedBy = null)
     {
-        if (RevokedAt is not null) throw new InvalidOperationException("Refresh session is already revoked.");
+        if (RevokedAt is not null) throw new BusinessRuleException("Refresh session is already revoked.");
         RevokedAt = now;
         ReplacedBySessionId = replacedBy;
     }

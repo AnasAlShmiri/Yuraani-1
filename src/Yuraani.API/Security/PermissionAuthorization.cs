@@ -1,12 +1,12 @@
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.EntityFrameworkCore;
-using Yuraani.Infrastructure.Persistence;
+using Yuraani.Application.Common.Abstractions;
 
 namespace Yuraani.API.Security;
 
 public sealed record PermissionRequirement(string Code) : IAuthorizationRequirement;
 
-public sealed class PermissionAuthorizationHandler(YuraaniDbContext db) : AuthorizationHandler<PermissionRequirement>
+public sealed class PermissionAuthorizationHandler(IPermissionChecker permissionChecker)
+    : AuthorizationHandler<PermissionRequirement>
 {
     protected override async Task HandleRequirementAsync(AuthorizationHandlerContext context, PermissionRequirement requirement)
     {
@@ -14,13 +14,7 @@ public sealed class PermissionAuthorizationHandler(YuraaniDbContext db) : Author
             ?? context.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
         if (!Guid.TryParse(subject, out var accountId)) return;
 
-        var hasPermission = await (
-            from userRole in db.UserRoles
-            join rolePermission in db.RolePermissions on userRole.RoleId equals rolePermission.RoleId
-            join permission in db.Permissions on rolePermission.PermissionId equals permission.Id
-            where userRole.UserAccountId == accountId && permission.Code == requirement.Code
-            select permission.Id).AnyAsync();
-
+        var hasPermission = await permissionChecker.HasPermissionAsync(accountId, requirement.Code);
         if (hasPermission) context.Succeed(requirement);
     }
 }

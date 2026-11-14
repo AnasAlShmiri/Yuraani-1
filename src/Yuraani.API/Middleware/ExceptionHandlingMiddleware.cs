@@ -1,7 +1,10 @@
 using FluentValidation;
 using System.Net;
 using System.Text.Json;
+using Yuraani.Domain.Common;
+
 namespace Yuraani.API.Middleware;
+
 public sealed class ExceptionHandlingMiddleware(RequestDelegate next, ILogger<ExceptionHandlingMiddleware> logger)
 {
     public async Task InvokeAsync(HttpContext context)
@@ -11,27 +14,22 @@ public sealed class ExceptionHandlingMiddleware(RequestDelegate next, ILogger<Ex
         {
             logger.LogError(ex, "Request failed.");
             if (context.Response.HasStarted) throw;
-            var status = ex switch
+
+            var (status, title, detail) = ex switch
             {
-                ValidationException => (int)HttpStatusCode.BadRequest,
-                ArgumentException => (int)HttpStatusCode.BadRequest,
-                UnauthorizedAccessException => (int)HttpStatusCode.Unauthorized,
-                KeyNotFoundException => (int)HttpStatusCode.NotFound,
-                InvalidOperationException => (int)HttpStatusCode.Conflict,
-                _ => (int)HttpStatusCode.InternalServerError
+                ValidationException ve => (400, "Validation failed", ve.Message),
+                DomainValidationException dve => (400, "Validation failed", dve.Message),
+                NotFoundException nfe => (404, "Resource not found", nfe.Message),
+                ForbiddenException fe => (403, "Forbidden", fe.Message),
+                BusinessRuleException bre => (422, "Business rule violation", bre.Message),
+                ConflictException ce => (409, "Conflict", ce.Message),
+                UnauthorizedAccessException => (401, "Unauthorized", "Authentication is required."),
+                _ => (500, "Server error", "An unexpected error occurred.")
             };
+
             context.Response.Clear();
             context.Response.StatusCode = status;
             context.Response.ContentType = "application/problem+json";
-            var detail = status == 500 ? "An unexpected error occurred." : ex.Message;
-            var title = status switch
-            {
-                400 => "Validation failed",
-                401 => "Unauthorized",
-                404 => "Resource not found",
-                409 => "Request conflict",
-                _ => "Server error"
-            };
             await context.Response.WriteAsync(JsonSerializer.Serialize(new { type = "about:blank", title, status, detail }));
         }
     }

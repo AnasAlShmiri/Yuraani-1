@@ -2,7 +2,9 @@ using Microsoft.EntityFrameworkCore;
 using Yuraani.Application.Features.Identity.Auth.Abstractions;
 using Yuraani.Domain.Identity;
 using Yuraani.Infrastructure.Persistence;
+
 namespace Yuraani.Infrastructure.Identity;
+
 public sealed class AuthRepository(YuraaniDbContext db) : IAuthRepository
 {
     public Task<bool> PhoneExistsAsync(string phone, CancellationToken ct) => db.UserAccounts.AnyAsync(x => x.NormalizedPhoneNumber == phone, ct);
@@ -21,9 +23,14 @@ public sealed class AuthRepository(YuraaniDbContext db) : IAuthRepository
             .OrderByDescending(x => x.CreatedAt).FirstOrDefaultAsync(ct);
     public Task<int> CountChallengesSinceAsync(Guid id, VerificationChannel channel, DateTimeOffset since, CancellationToken ct) =>
         db.VerificationChallenges.CountAsync(x => x.UserAccountId == id && x.Channel == channel && x.CreatedAt >= since, ct);
-    public async Task RevokeActiveChallengesAsync(Guid id, VerificationChannel channel, DateTimeOffset now, CancellationToken ct) =>
-        await db.VerificationChallenges.Where(x => x.UserAccountId == id && x.Channel == channel && x.ConsumedAt == null && x.RevokedAt == null)
-            .ExecuteUpdateAsync(update => update.SetProperty(x => x.RevokedAt, now), ct);
+    public async Task RevokeActiveChallengesAsync(Guid id, VerificationChannel channel, DateTimeOffset now, CancellationToken ct)
+    {
+        var activeChallenges = await db.VerificationChallenges
+            .Where(x => x.UserAccountId == id && x.Channel == channel && x.ConsumedAt == null && x.RevokedAt == null)
+            .ToListAsync(ct);
+        foreach (var challenge in activeChallenges)
+            challenge.Revoke(now);
+    }
     public async Task<IReadOnlyList<string>> GetRoleNamesAsync(Guid accountId, CancellationToken ct) =>
         await (from userRole in db.UserRoles join role in db.Roles on userRole.RoleId equals role.Id
                where userRole.UserAccountId == accountId select role.Name).ToListAsync(ct);
