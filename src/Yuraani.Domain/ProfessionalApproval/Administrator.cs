@@ -1,4 +1,4 @@
-using Yuraani.Domain.Common;
+ using Yuraani.Domain.Common;
 
 namespace Yuraani.Domain.ProfessionalApproval;
 

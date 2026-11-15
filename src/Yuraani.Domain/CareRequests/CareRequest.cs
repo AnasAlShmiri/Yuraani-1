@@ -2,62 +2,50 @@ using Yuraani.Domain.Common;
 
 namespace Yuraani.Domain.CareRequests;
 
-public enum ServiceType
-{
-    DoctorHomeVisit = 1,
-    VideoConsultation = 2,
-    HomeNursingCare = 3
-}
-
-public enum SymptomInputChannel { Text = 1, Voice = 2 }
-
-public enum RequestStatus
-{
-    Submitted = 1,
-    Assigned = 2,
-    Accepted = 3,
-    Stalled = 4,
-    Completed = 5,
-    Cancelled = 6
-}
-
-public enum AssignmentStatus
-{
-    Pending = 1,
-    Accepted = 2,
-    Declined = 3,
-    Expired = 4
-}
-
-public enum AppointmentStatus
-{
-    Preliminary = 1,
-    Confirmed = 2,
-    Rescheduled = 3,
-    Completed = 4,
-    Cancelled = 5
-}
-
+/// <summary>طلب رعاية صحية مقدّم من مريض.</summary>
 public sealed class CareRequest : AggregateRoot
 {
     private readonly List<RequestAssignment> _assignments = new();
 
+    /// <summary>معرّف المريض.</summary>
     public Guid PatientId { get; private set; }
+
+    /// <summary>معرّف مقدم الرعاية المختار.</summary>
     public Guid SelectedProviderId { get; private set; }
+
+    /// <summary>نوع الخدمة.</summary>
     public ServiceType ServiceType { get; private set; }
+
+    /// <summary>وصف الأعراض.</summary>
     public string SymptomDescription { get; private set; } = string.Empty;
+
+    /// <summary>قناة إدخال الأعراض.</summary>
     public SymptomInputChannel InputChannel { get; private set; }
+
+    /// <summary>التخصص المقترح بعد تحليل الأعراض.</summary>
     public string? SuggestedSpecialty { get; private set; }
+
+    /// <summary>موافقة المريض الصريحة على كشف سجله الطبي.</summary>
     public bool PatientConsent { get; private set; }
+
+    /// <summary>حالة الطلب.</summary>
     public RequestStatus RequestStatus { get; private set; }
+
+    /// <summary>التاريخ المفضّل للزيارة.</summary>
     public DateTimeOffset PreferredDate { get; private set; }
+
+    /// <summary>عنوان الزيارة.</summary>
     public string? VisitAddress { get; private set; }
+
+    /// <summary>وقت تقديم الطلب.</summary>
     public DateTimeOffset CreatedAt { get; private set; }
 
+    /// <summary>قائمة الإسنادات.</summary>
     public IReadOnlyCollection<RequestAssignment> Assignments => _assignments.AsReadOnly();
 
     private CareRequest() { }
 
+    /// <summary>يُنشئ طلب رعاية جديد.</summary>
     public static CareRequest Submit(
         Guid patientId,
         Guid selectedProviderId,
@@ -96,9 +84,13 @@ public sealed class CareRequest : AggregateRoot
         return request;
     }
 
+    /// <summary>يمنح المريض موافقته على كشف سجله الطبي.</summary>
     public void GrantRecordConsent() => PatientConsent = true;
+
+    /// <summary>يسحب المريض موافقته على كشف سجله الطبي.</summary>
     public void RevokeRecordConsent() => PatientConsent = false;
 
+    /// <summary>يقبل مقدم الرعاية الطلب.</summary>
     public void AcceptByProvider(Guid providerId)
     {
         var current = _assignments.LastOrDefault(a => a.ProviderId == providerId && a.Status == AssignmentStatus.Pending)
@@ -108,6 +100,7 @@ public sealed class CareRequest : AggregateRoot
         RequestStatus = RequestStatus.Accepted;
     }
 
+    /// <summary>يرفض مقدم الرعاية الطلب.</summary>
     public void DeclineByProvider(Guid providerId, string? reason = null)
     {
         var current = _assignments.LastOrDefault(a => a.ProviderId == providerId && a.Status == AssignmentStatus.Pending)
@@ -117,6 +110,7 @@ public sealed class CareRequest : AggregateRoot
         RequestStatus = RequestStatus.Stalled;
     }
 
+    /// <summary>يعيد إسناد طلب متوقف.</summary>
     public void ReassignStalledRequest(Guid newProviderId)
     {
         if (RequestStatus != RequestStatus.Stalled)
@@ -129,6 +123,7 @@ public sealed class CareRequest : AggregateRoot
         RequestStatus = RequestStatus.Assigned;
     }
 
+    /// <summary>يلغي الطلب.</summary>
     public void CancelRequest()
     {
         if (RequestStatus == RequestStatus.Completed)
@@ -136,126 +131,11 @@ public sealed class CareRequest : AggregateRoot
         RequestStatus = RequestStatus.Cancelled;
     }
 
+    /// <summary>يُكمل الطلب.</summary>
     public void MarkCompleted()
     {
         if (RequestStatus != RequestStatus.Accepted)
             throw new BusinessRuleException("لا يمكن إغلاق طلب لم يتم قبوله وتنفيذه.");
         RequestStatus = RequestStatus.Completed;
-    }
-}
-
-public sealed class RequestAssignment : Entity
-{
-    public Guid CareRequestId { get; private set; }
-    public Guid ProviderId { get; private set; }
-    public AssignmentStatus Status { get; private set; }
-    public DateTimeOffset AssignedAt { get; private set; }
-    public DateTimeOffset? RespondedAt { get; private set; }
-    public string? DeclineReason { get; private set; }
-
-    private RequestAssignment() { }
-
-    internal static RequestAssignment Create(Guid careRequestId, Guid providerId)
-    {
-        return new RequestAssignment
-        {
-            Id = Guid.NewGuid(),
-            CareRequestId = careRequestId,
-            ProviderId = providerId,
-            Status = AssignmentStatus.Pending,
-            AssignedAt = DateTimeOffset.UtcNow
-        };
-    }
-
-    internal void Accept()
-    {
-        Status = AssignmentStatus.Accepted;
-        RespondedAt = DateTimeOffset.UtcNow;
-    }
-
-    internal void Decline(string? reason)
-    {
-        Status = AssignmentStatus.Declined;
-        DeclineReason = reason?.Trim();
-        RespondedAt = DateTimeOffset.UtcNow;
-    }
-}
-
-public sealed class Appointment : AggregateRoot
-{
-    public Guid CareRequestId { get; private set; }
-    public Guid PatientId { get; private set; }
-    public Guid ProviderId { get; private set; }
-    public DateTimeOffset ScheduledStart { get; private set; }
-    public DateTimeOffset ScheduledEnd { get; private set; }
-    public AppointmentStatus AppointmentStatus { get; private set; }
-    public bool PatientConsent { get; private set; }
-    public DateTimeOffset? ConfirmedAt { get; private set; }
-    public string? CancellationReason { get; private set; }
-
-    private Appointment() { }
-
-    public static Appointment Book(
-        Guid careRequestId,
-        Guid patientId,
-        Guid providerId,
-        DateTimeOffset scheduledStart,
-        DateTimeOffset scheduledEnd,
-        bool patientConsent)
-    {
-        if (careRequestId == Guid.Empty || patientId == Guid.Empty || providerId == Guid.Empty)
-            throw new DomainValidationException("بيانات الطلب والمريض ومقدم الرعاية مطلوبة لحجز الموعد.");
-        if (scheduledEnd <= scheduledStart)
-            throw new DomainValidationException("وقت نهاية الموعد يجب أن يكون بعد وقت البداية.");
-
-        return new Appointment
-        {
-            Id = Guid.NewGuid(),
-            CareRequestId = careRequestId,
-            PatientId = patientId,
-            ProviderId = providerId,
-            ScheduledStart = scheduledStart,
-            ScheduledEnd = scheduledEnd,
-            AppointmentStatus = AppointmentStatus.Preliminary,
-            PatientConsent = patientConsent
-        };
-    }
-
-    public void ConfirmAppointment()
-    {
-        if (AppointmentStatus is AppointmentStatus.Cancelled or AppointmentStatus.Completed)
-            throw new BusinessRuleException("لا يمكن تأكيد موعد ملغى أو مكتمل.");
-        AppointmentStatus = AppointmentStatus.Confirmed;
-        ConfirmedAt = DateTimeOffset.UtcNow;
-    }
-
-    public void Reschedule(DateTimeOffset newStart, DateTimeOffset newEnd)
-    {
-        if (AppointmentStatus is AppointmentStatus.Completed or AppointmentStatus.Cancelled)
-            throw new BusinessRuleException("لا يمكن إعادة جدولة موعد مكتمل أو ملغى.");
-        if (newEnd <= newStart)
-            throw new DomainValidationException("توقيت الموعد الجديد غير صالح.");
-
-        ScheduledStart = newStart;
-        ScheduledEnd = newEnd;
-        AppointmentStatus = AppointmentStatus.Rescheduled;
-    }
-
-    public void CancelAppointment(string reason)
-    {
-        if (AppointmentStatus == AppointmentStatus.Completed)
-            throw new BusinessRuleException("لا يمكن إلغاء موعد مكتمل.");
-        if (string.IsNullOrWhiteSpace(reason))
-            throw new DomainValidationException("سبب إلغاء الموعد مطلوب.");
-
-        CancellationReason = reason.Trim();
-        AppointmentStatus = AppointmentStatus.Cancelled;
-    }
-
-    public void MarkCompleted()
-    {
-        if (AppointmentStatus is not (AppointmentStatus.Confirmed or AppointmentStatus.Rescheduled))
-            throw new BusinessRuleException("يجب أن يكون الموعد مؤكداً قبل إكماله.");
-        AppointmentStatus = AppointmentStatus.Completed;
     }
 }

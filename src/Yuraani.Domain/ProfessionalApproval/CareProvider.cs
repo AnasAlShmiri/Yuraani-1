@@ -2,7 +2,7 @@ using Yuraani.Domain.Common;
 
 namespace Yuraani.Domain.ProfessionalApproval;
 
-// ملاحظة: كيان Administrator معرّف في Administrator.cs ضمن نفس الـ namespace.
+/// <summary>مقدم الرعاية الصحية (طبيب أو ممرض) المسجّل في المنصة.</summary>
 public class CareProvider : AggregateRoot
 {
     public Guid AccountId { get; private set; }
@@ -20,6 +20,7 @@ public class CareProvider : AggregateRoot
 
     private CareProvider() { }
 
+    /// <summary>يُنشئ مقدم رعاية جديد.</summary>
     public static CareProvider Create(
         Guid accountId,
         ProfessionalType providerType,
@@ -53,6 +54,7 @@ public class CareProvider : AggregateRoot
         };
     }
 
+    /// <summary>يحدّث بيانات الملف الشخصي.</summary>
     public void UpdateProfile(string serviceArea, decimal basePrice, int yearsOfExperience, double? latitude, double? longitude)
     {
         ValidateProfile(serviceArea, basePrice, yearsOfExperience, latitude, longitude);
@@ -64,14 +66,17 @@ public class CareProvider : AggregateRoot
         Longitude = longitude;
     }
 
+    /// <summary>يُعلّم الاعتماد المهني.</summary>
     public void MarkApproved() => ApprovalStatus = ApprovalStatus.Approved;
 
+    /// <summary>يُرفض الاعتماد المهني.</summary>
     public void MarkRejected()
     {
         ApprovalStatus = ApprovalStatus.Rejected;
         IsAvailable = false;
     }
 
+    /// <summary>يحدّث حالة التوافر (مع منع التفعيل قبل الاعتماد).</summary>
     public void UpdateAvailability(bool isAvailable)
     {
         if (isAvailable && ApprovalStatus != ApprovalStatus.Approved)
@@ -79,6 +84,7 @@ public class CareProvider : AggregateRoot
         IsAvailable = isAvailable;
     }
 
+    /// <summary>يطبّق تقييماً جديداً ويحدّث المتوسط.</summary>
     public void ApplyNewRating(int score)
     {
         if (score is < 1 or > 5)
@@ -99,63 +105,5 @@ public class CareProvider : AggregateRoot
             throw new DomainValidationException("سنوات الخبرة غير صالحة.");
         if (latitude is < -90 or > 90 || longitude is < -180 or > 180)
             throw new DomainValidationException("إحداثيات الموقع غير صالحة.");
-    }
-}
-
-public sealed class Doctor : Entity
-{
-    public Guid CareProviderId { get; private set; }
-    public string MedicalLicenseNumber { get; private set; } = string.Empty;
-    public string ProfessionalTitle { get; private set; } = string.Empty;
-    public string SpecialtyName { get; private set; } = string.Empty;
-
-    private Doctor() { }
-
-    public static Doctor Create(Guid careProviderId, string medicalLicenseNumber, string professionalTitle, string specialtyName)
-    {
-        if (careProviderId == Guid.Empty)
-            throw new DomainValidationException("معرّف مقدم الرعاية مطلوب.");
-        if (string.IsNullOrWhiteSpace(medicalLicenseNumber))
-            throw new DomainValidationException("رقم الترخيص الطبي مطلوب.");
-        if (string.IsNullOrWhiteSpace(specialtyName))
-            throw new DomainValidationException("التخصص الطبي مطلوب.");
-
-        return new Doctor
-        {
-            Id = Guid.NewGuid(),
-            CareProviderId = careProviderId,
-            MedicalLicenseNumber = medicalLicenseNumber.Trim(),
-            ProfessionalTitle = professionalTitle?.Trim() ?? string.Empty,
-            SpecialtyName = specialtyName.Trim()
-        };
-    }
-}
-
-public sealed class Nurse : Entity
-{
-    public Guid CareProviderId { get; private set; }
-    public string NursingLicenseNumber { get; private set; } = string.Empty;
-    public string Qualification { get; private set; } = string.Empty;
-    public string NursingLevel { get; private set; } = string.Empty;
-
-    private Nurse() { }
-
-    public static Nurse Create(Guid careProviderId, string nursingLicenseNumber, string qualification, string nursingLevel)
-    {
-        if (careProviderId == Guid.Empty)
-            throw new DomainValidationException("معرّف مقدم الرعاية مطلوب.");
-        if (string.IsNullOrWhiteSpace(nursingLicenseNumber))
-            throw new DomainValidationException("رقم ترخيص التمريض مطلوب.");
-        if (string.IsNullOrWhiteSpace(qualification))
-            throw new DomainValidationException("المؤهل التمريضي مطلوب.");
-
-        return new Nurse
-        {
-            Id = Guid.NewGuid(),
-            CareProviderId = careProviderId,
-            NursingLicenseNumber = nursingLicenseNumber.Trim(),
-            Qualification = qualification.Trim(),
-            NursingLevel = nursingLevel?.Trim() ?? string.Empty
-        };
     }
 }

@@ -2,29 +2,33 @@ using Yuraani.Domain.Common;
 
 namespace Yuraani.Domain.Patients;
 
-public enum Gender { Male = 1, Female = 2 }
-
-public enum BloodGroup
-{
-    Unknown = 0,
-    APositive = 1, ANegative = 2,
-    BPositive = 3, BNegative = 4,
-    ABPositive = 5, ABNegative = 6,
-    OPositive = 7, ONegative = 8
-}
-
+/// <summary>مريض مسجّل في المنصة.</summary>
 public sealed class Patient : AggregateRoot
 {
+    /// <summary>معرّف حساب المستخدم.</summary>
     public Guid AccountId { get; private set; }
+
+    /// <summary>تاريخ الميلاد.</summary>
     public DateOnly DateOfBirth { get; private set; }
+
+    /// <summary>الجنس.</summary>
     public Gender Gender { get; private set; }
+
+    /// <summary>العنوان النصي.</summary>
     public string Address { get; private set; } = string.Empty;
+
+    /// <summary>خط العرض.</summary>
     public double? Latitude { get; private set; }
+
+    /// <summary>خط الطول.</summary>
     public double? Longitude { get; private set; }
+
+    /// <summary>تاريخ الإنشاء.</summary>
     public DateTimeOffset CreatedAt { get; private set; }
 
     private Patient() { }
 
+    /// <summary>يُنشئ سجل مريض جديد.</summary>
     public static Patient Create(
         Guid accountId,
         DateOnly dateOfBirth,
@@ -51,6 +55,7 @@ public sealed class Patient : AggregateRoot
         };
     }
 
+    /// <summary>يحدّث بيانات العنوان والموقع.</summary>
     public void UpdateAddress(string address, double? latitude, double? longitude)
     {
         if (string.IsNullOrWhiteSpace(address) || address.Length > 300)
